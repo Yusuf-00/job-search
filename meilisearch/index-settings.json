@@ -1,0 +1,55 @@
+{
+  "_comment": "Applied via PATCH /indexes/jobs/settings before any documents are indexed. See packages/etl/src/index-meilisearch.ts",
+
+  "searchableAttributes": [
+    "title",
+    "skills",
+    "companyName",
+    "description"
+  ],
+  "_searchableAttributes_comment": "Order here is significance, not just a list. A query matching `title` outranks the same query only matching `description`. This directly implements the brief's requirement: 'C# developer' in the title ranks above C# only mentioned in the description.",
+
+  "filterableAttributes": [
+    "city",
+    "state",
+    "workType",
+    "remoteAllowed",
+    "normalizedSalaryMaxAnnual",
+    "hasSalaryData",
+    "listedAtTimestamp"
+  ],
+
+  "sortableAttributes": [
+    "listedAtTimestamp",
+    "normalizedSalaryMaxAnnual"
+  ],
+
+  "rankingRules": [
+    "words",
+    "typo",
+    "proximity",
+    "attribute",
+    "sort",
+    "exactness"
+  ],
+  "_rankingRules_comment": "Default Meilisearch order, with 'sort' inserted before 'exactness' so that when a query is present, relevance still wins first (words/typo/proximity/attribute), then explicit sort (listedAt desc) acts as a tiebreaker among equally-relevant results — matching 'newest first' without burying better title matches under merely-newer ones.",
+
+  "typoTolerance": {
+    "enabled": true,
+    "minWordSizeForTypos": {
+      "oneTypo": 4,
+      "twoTypos": 8
+    },
+    "disableOnWords": ["csharp", "cpp", "dotnet", "aspdotnet", "nodejs", "vuejs", "nextjs", "fsharp", "objectivec"]
+  },
+  "_typoTolerance_comment": "Typo tolerance disabled specifically on the normalized symbol-terms — you do NOT want 'csharp' fuzzy-matching close to some other 4-letter-distance token and reintroducing the C#/C++ ambiguity we just fixed.",
+
+  "pagination": {
+    "maxTotalHits": 10000
+  },
+
+  "faceting": {
+    "maxValuesPerFacet": 200
+  },
+  "_faceting_comment": "Powers the city filter's dropdown/autocomplete via the `city` facet distribution, without a separate DISTINCT query against Postgres."
+}

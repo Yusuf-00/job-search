@@ -1,0 +1,5 @@
+{
+  "name": "job-search-platform",
+  "private": true,
+  "workspaces": ["packages/*"]
+}

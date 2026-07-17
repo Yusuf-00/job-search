@@ -1,0 +1,17 @@
+# Only Meilisearch runs locally in this setup — Postgres is hosted on
+# Supabase (free tier is enough for 200k narrow rows), so there's nothing
+# else to containerize for local dev. Swap the Meilisearch service for
+# Meilisearch Cloud in production if you'd rather not self-host it.
+version: '3.8'
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.9
+    ports:
+      - '7700:7700'
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev_master_key_change_me}
+      MEILI_ENV: development
+    volumes:
+      - meili_data:/meili_data
+volumes:
+  meili_data:
