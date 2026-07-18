@@ -55,6 +55,7 @@ async function main() {
       SELECT
         j.id, j.title, j.description, j.city, j.state, j.country,
         j.work_type, j.remote_allowed,
+        j.raw_salary_min, j.raw_salary_max, j.raw_salary_median, j.raw_pay_period,
         j.normalized_salary_min_annual, j.normalized_salary_max_annual,
         j.has_salary_data, j.listed_at,
         c.name AS company_name,
@@ -90,15 +91,21 @@ async function main() {
       // float precision loss), so these must be cast to actual numbers here —
       // otherwise Meilisearch indexes them as strings and the >= comparison
       // filter in salary.filter.ts silently misbehaves.
+      rawSalaryMin: row.raw_salary_min !== null ? Number(row.raw_salary_min) : null,
+      rawSalaryMax: row.raw_salary_max !== null ? Number(row.raw_salary_max) : null,
+      rawSalaryMedian: row.raw_salary_median !== null ? Number(row.raw_salary_median) : null,
+      rawPayPeriod: row.raw_pay_period ?? null,
       normalizedSalaryMinAnnual:
         row.normalized_salary_min_annual !== null ? Number(row.normalized_salary_min_annual) : null,
       normalizedSalaryMaxAnnual:
         row.normalized_salary_max_annual !== null ? Number(row.normalized_salary_max_annual) : null,
       hasSalaryData: row.has_salary_data,
       listedAtTimestamp: new Date(row.listed_at).getTime(),
-      // Keep original, un-normalized title for display in the UI —
-      // normalization is a search-index concern, not a presentation one.
+      // Keep original, un-normalized title/description/skills for display in
+      // the UI — normalization is a search-index concern, not a presentation
+      // one.
       displayTitle: row.title,
+      displayDescription: row.description ?? '',
     }));
 
     await index.addDocuments(documents, { primaryKey: 'id' });

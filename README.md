@@ -18,7 +18,10 @@ Kaggle CSVs -> ETL (load-postgres.ts) -> Supabase Postgres (source of truth)
                               Next.js Route Handlers (app/api/jobs/*)
                                               ^
                                               |
-                                  Next.js Server Components (app/search)
+                                  Next.js Server Components (app/page)
+                                          |
+                                          v
+                                      Client ResultsList (virtualized infinite scroll)
 ```
 
 ## Prerequisites
@@ -79,7 +82,7 @@ npm run index -w @job-search/etl
 npm run dev -w @job-search/web
 ```
 
-Visit `http://localhost:3000/search`.
+Visit `http://localhost:3000`.
 
 ## Notes
 
@@ -90,3 +93,16 @@ Visit `http://localhost:3000/search`.
   (`packages/shared/src/tokenize-normalize.ts`).
 - Jobs with no salary data are never excluded by a salary filter — see
   `packages/web/lib/search/filters/salary.filter.ts`.
+
+
+## Result Counts And Virtualization
+
+- The header shows the real indexed corpus size (for example, `200,000 indexed jobs`).
+- A second line shows ranked pagination progress (for example,
+  `Showing 160 of 10,000 ranked results`).
+- This split is intentional: Meilisearch `pagination.maxTotalHits` limits
+  deep pagination/reporting (currently 10,000), while matching/ranking still
+  evaluates across the full indexed dataset.
+- Results are loaded incrementally with infinite scroll (page-by-page) and
+  rendered with virtualization so only near-viewport cards are mounted in the
+  DOM at any time.

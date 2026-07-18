@@ -5,6 +5,7 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { SearchResult, SearchHit } from '../lib/search/providers/search-provider.interface';
 import { searchJobs } from '../lib/api';
 import ResultCard from './ResultCard';
+import JobDetailModal from './JobDetailModal';
 
 interface ResultsListProps {
   result: SearchResult;
@@ -18,6 +19,7 @@ export default function ResultsList({ result, q, city, minSalary }: ResultsListP
   const [hits, setHits] = useState<SearchHit[]>(result.hits || []);
   const [totalIndexedJobs] = useState(result.totalIndexedJobs || 0);
   const [totalHits] = useState(result.totalHits || 0);
+  const [selectedHit, setSelectedHit] = useState<SearchHit | null>(null);
 
   // Refs to track pagination and prevent duplicate fetches
   const nextPageRef = useRef(2);
@@ -85,15 +87,15 @@ export default function ResultsList({ result, q, city, minSalary }: ResultsListP
   }, [virtualItems, hits.length, totalHits, q, city, minSalary]);
 
   if (hits.length === 0) {
-    return <p>No jobs matched your search.</p>;
+    return <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No jobs matched your search.</p>;
   }
 
   return (
     <div>
-      <p style={{ color: '#666', fontSize: '14px' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>
         {totalIndexedJobs.toLocaleString()} indexed jobs
       </p>
-      <p style={{ color: '#666', fontSize: '14px' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
         Showing {hits.length.toLocaleString()} of {totalHits.toLocaleString()} ranked results
       </p>
       <ul
@@ -118,16 +120,17 @@ export default function ResultsList({ result, q, city, minSalary }: ResultsListP
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <ResultCard hit={hit} />
+              <ResultCard hit={hit} onClick={() => setSelectedHit(hit)} />
             </li>
           );
         })}
       </ul>
       {isFetchingRef.current && (
-        <p style={{ color: '#999', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
           Loading more...
         </p>
       )}
+      {selectedHit && <JobDetailModal hit={selectedHit} onClose={() => setSelectedHit(null)} />}
     </div>
   );
 }
