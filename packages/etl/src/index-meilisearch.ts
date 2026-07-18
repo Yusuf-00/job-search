@@ -4,7 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeDocumentText } from '../../shared/src/tokenize-normalize';
 
-const PG_URL = process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/jobsearch';
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set. Check that .env exists at the repo root and contains your Supabase connection string.',
+  );
+}
+const PG_URL = process.env.DATABASE_URL;
 const MEILI_URL = process.env.MEILI_URL ?? 'http://localhost:7700';
 const MEILI_API_KEY = process.env.MEILI_MASTER_KEY;
 const BATCH_SIZE = 5000;
@@ -34,8 +39,17 @@ async function main() {
   const total = Number(countResult.rows[0].count);
   console.log(`Indexing ${total} jobs in batches of ${BATCH_SIZE}...`);
 
-  let offset = 0;
-  while (offset < total) {
+  // Keyset pagination instead of OFFSET: OFFSET forces Postgres to scan and
+  // discard every prior row on every batch, which gets progressively
+  // slower as you page deeper into a 200k-row table with joins/group by —
+  // slow enough at high offsets to hit a connection statement timeout
+  // (exactly what happened around offset 85,000). WHERE id > lastId keeps
+  // every batch equally fast via the primary key index, regardless of how
+  // far into the table you are.
+  let lastId = 0;
+  let indexed = 0;
+
+  while (true) {
     const { rows } = await pg.query(
       `
       SELECT
@@ -48,12 +62,15 @@ async function main() {
       FROM jobs j
       LEFT JOIN companies c ON c.id = j.company_id
       LEFT JOIN job_skills js ON js.job_id = j.id
+      WHERE j.id > $1
       GROUP BY j.id, c.name
       ORDER BY j.id
-      LIMIT $1 OFFSET $2
+      LIMIT $2
       `,
-      [BATCH_SIZE, offset],
+      [lastId, BATCH_SIZE],
     );
+
+    if (rows.length === 0) break;
 
     const documents = rows.map((row) => ({
       id: row.id,
@@ -79,8 +96,9 @@ async function main() {
     }));
 
     await index.addDocuments(documents, { primaryKey: 'id' });
-    offset += BATCH_SIZE;
-    console.log(`Indexed ${Math.min(offset, total)}/${total}`);
+    lastId = rows[rows.length - 1].id;
+    indexed += rows.length;
+    console.log(`Indexed ${indexed}/${total}`);
   }
 
   await pg.end();

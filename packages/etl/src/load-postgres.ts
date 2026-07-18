@@ -14,8 +14,20 @@ import path from 'node:path';
  *   data/companies/companies.csv
  *   data/jobs/job_skills.csv
  */
-const DATA_DIR = process.env.CSV_DATA_DIR ?? path.join(__dirname, '../../../data');
-const PG_URL = process.env.DATABASE_URL!; // Supabase connection string (session pooler, port 5432 or 6543)
+// Always resolve relative to the repo root, regardless of cwd — npm
+// workspaces run scripts with cwd set to the package dir (packages/etl),
+// not the repo root, so a bare relative env var like "./data" would
+// otherwise resolve to packages/etl/data instead of <repo root>/data.
+const REPO_ROOT = path.resolve(__dirname, '../../../');
+const DATA_DIR = path.isAbsolute(process.env.CSV_DATA_DIR ?? '')
+  ? process.env.CSV_DATA_DIR!
+  : path.resolve(REPO_ROOT, process.env.CSV_DATA_DIR ?? 'data');
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set. Check that .env exists at the repo root and contains your Supabase connection string.',
+  );
+}
+const PG_URL = process.env.DATABASE_URL; // Supabase connection string (session pooler, port 5432 or 6543)
 const BATCH_SIZE = 1000;
 
 async function readCsv(filePath: string): Promise<Record<string, string>[]> {
@@ -59,9 +71,11 @@ async function loadCompanies(pg: Client) {
   }
 }
 
-async function loadJobs(pg: Client) {
+async function loadJobs(pg: Client, validCompanyIds: Set<number>) {
   const rows = await readCsv(path.join(DATA_DIR, 'postings.csv'));
   console.log(`Loading ${rows.length} jobs...`);
+
+  let orphanedCompanyRefs = 0;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
@@ -69,9 +83,18 @@ async function loadJobs(pg: Client) {
     const placeholders = batch
       .map((r, idx) => {
         const base = idx * 14;
+        // The source dataset has postings referencing company_ids that
+        // don't exist in companies.csv (companies removed/merged before
+        // the snapshot). Null the FK rather than dropping the job row —
+        // the posting itself is still real and searchable, it just has no
+        // linked company record.
+        const rawCompanyId = r.company_id ? Number(r.company_id) : null;
+        const companyId = rawCompanyId !== null && validCompanyIds.has(rawCompanyId) ? rawCompanyId : null;
+        if (rawCompanyId !== null && companyId === null) orphanedCompanyRefs++;
+
         values.push(
           Number(r.job_id),
-          r.company_id ? Number(r.company_id) : null,
+          companyId,
           r.title ?? 'Untitled',
           r.description ?? null,
           r.location?.split(',')[0]?.trim() ?? null, // city (CSV ships "City, ST")
@@ -100,9 +123,15 @@ async function loadJobs(pg: Client) {
     );
     console.log(`  jobs ${Math.min(i + BATCH_SIZE, rows.length)}/${rows.length}`);
   }
+
+  if (orphanedCompanyRefs > 0) {
+    console.log(
+      `Note: ${orphanedCompanyRefs} postings referenced a company_id missing from companies.csv — stored with company_id = NULL.`,
+    );
+  }
 }
 
-async function loadSkills(pg: Client) {
+async function loadSkills(pg: Client, validJobIds: Set<number>) {
   const filePath = path.join(DATA_DIR, 'jobs/job_skills.csv');
   if (!fs.existsSync(filePath)) {
     console.log('job_skills.csv not found, skipping skills load.');
@@ -111,8 +140,20 @@ async function loadSkills(pg: Client) {
   const rows = await readCsv(filePath);
   console.log(`Loading ${rows.length} job_skills rows...`);
 
+  let orphanedJobRefs = 0;
+
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE).filter((r) => r.job_id && r.skill_abr);
+    const batch = rows
+      .slice(i, i + BATCH_SIZE)
+      .filter((r) => r.job_id && r.skill_abr)
+      // job_skills.csv can reference job_ids that were filtered out of the
+      // sampled postings.csv — skip those rather than letting the whole
+      // batch insert fail on one bad FK.
+      .filter((r) => {
+        const ok = validJobIds.has(Number(r.job_id));
+        if (!ok) orphanedJobRefs++;
+        return ok;
+      });
     if (batch.length === 0) continue;
     const values: any[] = [];
     const placeholders = batch
@@ -130,6 +171,12 @@ async function loadSkills(pg: Client) {
       values,
     );
   }
+
+  if (orphanedJobRefs > 0) {
+    console.log(
+      `Note: ${orphanedJobRefs} job_skills rows referenced a job_id missing from jobs — skipped.`,
+    );
+  }
 }
 
 async function main() {
@@ -137,8 +184,16 @@ async function main() {
   await pg.connect();
 
   await loadCompanies(pg);
-  await loadJobs(pg);
-  await loadSkills(pg);
+
+  const { rows: companyIdRows } = await pg.query('SELECT id FROM companies');
+  const validCompanyIds = new Set<number>(companyIdRows.map((r: any) => Number(r.id)));
+
+  await loadJobs(pg, validCompanyIds);
+
+  const { rows: jobIdRows } = await pg.query('SELECT id FROM jobs');
+  const validJobIds = new Set<number>(jobIdRows.map((r: any) => Number(r.id)));
+
+  await loadSkills(pg, validJobIds);
 
   await pg.end();
   console.log('Load complete.');

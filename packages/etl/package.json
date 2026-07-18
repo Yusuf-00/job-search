@@ -2,9 +2,10 @@
   "name": "@job-search/etl",
   "private": true,
   "scripts": {
-    "load": "ts-node -r dotenv/config src/load-postgres.ts",
-    "augment": "ts-node -r dotenv/config src/augment-dataset.ts",
-    "index": "ts-node -r dotenv/config src/index-meilisearch.ts"
+    "load": "DOTENV_CONFIG_PATH=../../.env ts-node -r dotenv/config src/load-postgres.ts",
+    "augment": "DOTENV_CONFIG_PATH=../../.env ts-node -r dotenv/config src/augment-dataset.ts",
+    "index": "DOTENV_CONFIG_PATH=../../.env ts-node -r dotenv/config src/index-meilisearch.ts",
+    "seed": "npm run load && npm run augment && npm run index"
   },
   "dependencies": {
     "pg": "^8.12.0",
