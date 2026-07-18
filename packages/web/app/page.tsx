@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { searchJobs, fetchCities } from '../lib/api';
+import { searchJobsService, listCitiesService } from '../lib/search/search.service';
 import SearchInput from '../components/SearchInput';
 import FilterPanel from '../components/FilterPanel';
 import ResultsList from '../components/ResultsList';
@@ -10,7 +10,7 @@ interface PageProps {
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
-  const cities = await fetchCities();
+  const cities = await listCitiesService();
 
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '24px' }}>
@@ -37,10 +37,10 @@ export default async function HomePage({ searchParams }: PageProps) {
 }
 
 async function ResultsBoundary({ searchParams }: PageProps) {
-  const result = await searchJobs({
+  const result = await searchJobsService({
     q: searchParams.q,
     city: searchParams.city,
-    minSalary: searchParams.minSalary ? Number(searchParams.minSalary) : undefined,
+    minSalaryAnnual: searchParams.minSalary ? Number(searchParams.minSalary) : undefined,
   });
 
   const cacheKey = `${searchParams.q ?? ''}|${searchParams.city ?? ''}|${searchParams.minSalary ?? ''}`;
