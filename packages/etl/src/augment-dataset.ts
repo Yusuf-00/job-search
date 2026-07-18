@@ -10,7 +10,12 @@ import { Client } from 'pg';
  * Each synthetic job is flagged is_synthetic = true so it can be excluded
  * from analysis or clearly labeled in a demo if needed.
  */
-const PG_URL = process.env.DATABASE_URL!;
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set. Check that .env exists at the repo root and contains your Supabase connection string.',
+  );
+}
+const PG_URL = process.env.DATABASE_URL;
 const TARGET_TOTAL = 200_000;
 
 function randomRecentDate(maxDaysAgo = 60): Date {
