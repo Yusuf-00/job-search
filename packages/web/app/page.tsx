@@ -30,7 +30,6 @@ export default async function HomePage({ searchParams }: PageProps) {
       </div>
 
       <Suspense fallback={<ResultsSkeleton />}>
-        {/* @ts-expect-error Async Server Component */}
         <ResultsBoundary searchParams={searchParams} />
       </Suspense>
     </main>
