@@ -1,0 +1,46 @@
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Local environment variables
+.env
+.env.local
+.env.*.local
+
+# Build directories
+.next/
+**/.next/
+out/
+**/out/
+dist/
+**/dist/
+
+# Local logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# System files
+.DS_Store
+Thumbs.db
+data
+
+# Agent and workspace-generated files
+.agents/
+
+# Miscellaneous caches
+coverage/
+**/coverage/
+.cache/
+**/.cache/
+.eslintcache
