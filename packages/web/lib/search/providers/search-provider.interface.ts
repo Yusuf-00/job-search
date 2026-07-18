@@ -29,6 +29,7 @@ export interface SearchHit {
 export interface SearchResult {
   hits: SearchHit[];
   totalHits: number;
+  totalIndexedJobs: number;
   page: number;
   pageSize: number;
   processingTimeMs: number;

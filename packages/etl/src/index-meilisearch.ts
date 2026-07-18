@@ -86,8 +86,14 @@ async function main() {
       country: row.country,
       workType: row.work_type,
       remoteAllowed: row.remote_allowed,
-      normalizedSalaryMinAnnual: row.normalized_salary_min_annual,
-      normalizedSalaryMaxAnnual: row.normalized_salary_max_annual,
+      // node-postgres returns NUMERIC columns as strings by default (to avoid
+      // float precision loss), so these must be cast to actual numbers here —
+      // otherwise Meilisearch indexes them as strings and the >= comparison
+      // filter in salary.filter.ts silently misbehaves.
+      normalizedSalaryMinAnnual:
+        row.normalized_salary_min_annual !== null ? Number(row.normalized_salary_min_annual) : null,
+      normalizedSalaryMaxAnnual:
+        row.normalized_salary_max_annual !== null ? Number(row.normalized_salary_max_annual) : null,
       hasSalaryData: row.has_salary_data,
       listedAtTimestamp: new Date(row.listed_at).getTime(),
       // Keep original, un-normalized title for display in the UI —

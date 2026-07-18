@@ -2,16 +2,18 @@
   "name": "@job-search/web",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../.env next dev",
+    "build": "NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../.env next build",
+    "start": "NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../.env next start"
   },
   "dependencies": {
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "meilisearch": "^0.44.1",
-    "@supabase/supabase-js": "^2.44.4"
+    "@supabase/supabase-js": "^2.44.4",
+    "dotenv": "^16.4.5",
+    "@tanstack/react-virtual": "^3.5.1"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

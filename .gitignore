@@ -34,6 +34,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 data
+.github/
 
 # Agent and workspace-generated files
 .agents/

@@ -1,9 +1,14 @@
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { searchJobs, fetchCities } from '../../lib/api';
 import SearchInput from '../../components/SearchInput';
 import FilterPanel from '../../components/FilterPanel';
-import ResultsList from '../../components/ResultsList';
 import ResultsSkeleton from '../../components/ResultsSkeleton';
+
+const ResultsList = dynamic(() => import('../../components/ResultsList'), {
+  ssr: false,
+  loading: () => <ResultsSkeleton />,
+});
 
 /**
  * Server Component: query/filter state lives entirely in the URL
@@ -43,7 +48,21 @@ async function ResultsBoundary({ searchParams }: PageProps) {
     q: searchParams.q,
     city: searchParams.city,
     minSalary: searchParams.minSalary ? Number(searchParams.minSalary) : undefined,
-    page: searchParams.page ? Number(searchParams.page) : undefined,
+    // page param is not passed — always fetch page 1 server-side on initial render.
+    // Client-side infinite scroll fetches subsequent pages via ResultsList.
   });
-  return <ResultsList result={result} />;
+
+  // Key ensures ResultsList remounts (and resets accumulated hits) on filter/query change,
+  // automatically discarding stale client-side state without manual reset logic.
+  const cacheKey = `${searchParams.q ?? ''}|${searchParams.city ?? ''}|${searchParams.minSalary ?? ''}`;
+
+  return (
+    <ResultsList
+      key={cacheKey}
+      result={result}
+      q={searchParams.q}
+      city={searchParams.city}
+      minSalary={searchParams.minSalary ? Number(searchParams.minSalary) : undefined}
+    />
+  );
 }
