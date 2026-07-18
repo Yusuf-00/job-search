@@ -35,7 +35,7 @@ export class MeilisearchProvider implements ISearchProvider {
       page: query.page,
       hitsPerPage: query.pageSize,
     });
-    let totalIndexedJobs = response.totalHits ?? response.estimatedTotalHits ?? 0;
+    let totalIndexedJobs = response.totalHits ?? 0;
     try {
       totalIndexedJobs = await this.getTotalIndexedJobs(indexName);
     } catch {
@@ -44,7 +44,7 @@ export class MeilisearchProvider implements ISearchProvider {
 
     return {
       hits: response.hits as any,
-      totalHits: response.totalHits ?? response.estimatedTotalHits ?? 0,
+      totalHits: response.totalHits ?? 0,
       totalIndexedJobs,
       page: response.page ?? query.page,
       pageSize: response.hitsPerPage ?? query.pageSize,
