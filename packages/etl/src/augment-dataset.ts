@@ -1,4 +1,5 @@
 import { Client } from 'pg';
+import { normalizeSalary } from '../../shared/src/normalize-salary';
 
 /**
  * Augments real data to ~200k rows by SAMPLING from real distributions
@@ -71,9 +72,16 @@ async function main() {
 
     for (let i = 0; i < batchSize; i++) {
       const city = pick(cities);
-      const salary = Math.random() > 0.15 ? pick(salaryTemplates) : null; // ~15% no salary, matches real dataset's rate
+      const salaryTemplate = Math.random() > 0.15 ? pick(salaryTemplates) : null; // ~15% no salary, matches real dataset's rate
+      const salary = salaryTemplate
+        ? normalizeSalary({
+            min: salaryTemplate.raw_salary_min ? Number(salaryTemplate.raw_salary_min) : null,
+            max: salaryTemplate.raw_salary_max ? Number(salaryTemplate.raw_salary_max) : null,
+            payPeriod: salaryTemplate.raw_pay_period ?? null,
+          })
+        : null;
       const id = nextId++;
-      const base = i * 12;
+      const base = i * 15;
 
       values.push(
         id,
@@ -84,20 +92,24 @@ async function main() {
         city.state,
         pick(workTypes)?.work_type ?? 'FULL_TIME',
         Math.random() > 0.7,
-        salary?.raw_salary_min ?? null,
-        salary?.raw_salary_max ?? null,
-        salary?.raw_pay_period ?? null,
+        salaryTemplate?.raw_salary_min ?? null,
+        salaryTemplate?.raw_salary_max ?? null,
+        salaryTemplate?.raw_pay_period ?? null,
         randomRecentDate().toISOString(),
+        salary?.normalizedMinAnnual ?? null,
+        salary?.normalizedMaxAnnual ?? null,
+        salary?.hasSalaryData ?? false,
       );
       placeholders.push(
-        `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, true)`,
+        `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14}, $${base + 15}, true)`,
       );
     }
 
     await pg.query(
       `INSERT INTO jobs (
          id, company_id, title, description, city, state,
-         work_type, remote_allowed, raw_salary_min, raw_salary_max, raw_pay_period, listed_at, is_synthetic
+         work_type, remote_allowed, raw_salary_min, raw_salary_max, raw_pay_period, listed_at,
+         normalized_salary_min_annual, normalized_salary_max_annual, has_salary_data, is_synthetic
        ) VALUES ${placeholders.join(',')}`,
       values,
     );

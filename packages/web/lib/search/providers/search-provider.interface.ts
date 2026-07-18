@@ -15,11 +15,18 @@ export interface SearchQuery {
 export interface SearchHit {
   id: string | number;
   displayTitle: string;
+  displayDescription?: string;
+  description?: string;
+  skills: string[];
   companyName: string;
   city: string | null;
   state: string | null;
   workType: string | null;
   remoteAllowed: boolean;
+  rawSalaryMin: number | null;
+  rawSalaryMax: number | null;
+  rawSalaryMedian: number | null;
+  rawPayPeriod: string | null;
   normalizedSalaryMinAnnual: number | null;
   normalizedSalaryMaxAnnual: number | null;
   hasSalaryData: boolean;
@@ -29,6 +36,7 @@ export interface SearchHit {
 export interface SearchResult {
   hits: SearchHit[];
   totalHits: number;
+  totalIndexedJobs: number;
   page: number;
   pageSize: number;
   processingTimeMs: number;

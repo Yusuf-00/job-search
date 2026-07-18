@@ -2,6 +2,7 @@ import { Client } from 'pg';
 import { parse } from 'csv-parse';
 import fs from 'node:fs';
 import path from 'node:path';
+import { normalizeSalary } from '../../shared/src/normalize-salary';
 
 /**
  * Loads the raw Kaggle LinkedIn Job Postings CSVs into Postgres.
@@ -82,7 +83,7 @@ async function loadJobs(pg: Client, validCompanyIds: Set<number>) {
     const values: any[] = [];
     const placeholders = batch
       .map((r, idx) => {
-        const base = idx * 14;
+        const base = idx * 17;
         // The source dataset has postings referencing company_ids that
         // don't exist in companies.csv (companies removed/merged before
         // the snapshot). Null the FK rather than dropping the job row —
@@ -91,6 +92,13 @@ async function loadJobs(pg: Client, validCompanyIds: Set<number>) {
         const rawCompanyId = r.company_id ? Number(r.company_id) : null;
         const companyId = rawCompanyId !== null && validCompanyIds.has(rawCompanyId) ? rawCompanyId : null;
         if (rawCompanyId !== null && companyId === null) orphanedCompanyRefs++;
+
+        const normalized = normalizeSalary({
+          min: r.min_salary ? Number(r.min_salary) : null,
+          max: r.max_salary ? Number(r.max_salary) : null,
+          median: r.med_salary ? Number(r.med_salary) : null,
+          payPeriod: r.pay_period ?? null,
+        });
 
         values.push(
           Number(r.job_id),
@@ -107,8 +115,11 @@ async function loadJobs(pg: Client, validCompanyIds: Set<number>) {
           r.med_salary ? Number(r.med_salary) : null,
           r.pay_period ?? null,
           r.listed_time ? new Date(Number(r.listed_time)).toISOString() : new Date().toISOString(),
+          normalized.normalizedMinAnnual,
+          normalized.normalizedMaxAnnual,
+          normalized.hasSalaryData,
         );
-        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14})`;
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14}, $${base + 15}, $${base + 16}, $${base + 17})`;
       })
       .join(',');
 
@@ -116,7 +127,8 @@ async function loadJobs(pg: Client, validCompanyIds: Set<number>) {
       `INSERT INTO jobs (
          id, company_id, title, description, city, state, country,
          work_type, remote_allowed,
-         raw_salary_min, raw_salary_max, raw_salary_median, raw_pay_period, listed_at
+         raw_salary_min, raw_salary_max, raw_salary_median, raw_pay_period, listed_at,
+         normalized_salary_min_annual, normalized_salary_max_annual, has_salary_data
        ) VALUES ${placeholders}
        ON CONFLICT (id) DO NOTHING`,
       values,

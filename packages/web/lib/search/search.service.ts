@@ -31,12 +31,16 @@ export async function searchJobsService(params: JobSearchParams): Promise<Search
   // equally-relevant hits, and as the primary order when q is empty.
   const sort = ['listedAtTimestamp:desc'];
 
+  // Clamp pageSize to prevent unbounded resource use from repeated client
+  // "load more" calls (OWASP: unbounded resource consumption).
+  const pageSize = Math.min(params.pageSize ?? 20, 50);
+
   return searchProvider.search({
     q,
     filters,
     sort,
     page: params.page ?? 1,
-    pageSize: params.pageSize ?? 20,
+    pageSize,
   });
 }
 

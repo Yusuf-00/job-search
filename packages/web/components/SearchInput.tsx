@@ -49,7 +49,26 @@ export default function SearchInput({ initialQuery }: { initialQuery: string }) 
       onChange={(e) => setValue(e.target.value)}
       placeholder="Search job titles, skills, companies…"
       aria-label="Job search"
-      style={{ width: '100%', padding: '12px', fontSize: '16px' }}
+      style={{
+        width: '100%',
+        padding: '12px 14px',
+        fontSize: '16px',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        backgroundColor: 'var(--surface)',
+        color: 'var(--text-primary)',
+        boxShadow: 'var(--shadow-sm)',
+        transition: 'all 0.2s ease',
+        outline: 'none',
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = 'var(--accent)';
+        e.currentTarget.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.1), var(--shadow-sm)';
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+      }}
     />
   );
 }

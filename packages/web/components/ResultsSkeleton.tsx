@@ -4,11 +4,13 @@ export default function ResultsSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
+          className="shimmer"
           style={{
             minHeight: '96px',
-            padding: '16px 0',
-            borderBottom: '1px solid #eee',
-            background: 'linear-gradient(90deg, #f5f5f5 25%, #eee 37%, #f5f5f5 63%)',
+            padding: '16px',
+            marginBottom: '12px',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
           }}
         />
       ))}
